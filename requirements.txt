@@ -4,3 +4,9 @@ yt-dlp
 openai-whisper
 ffmpeg-python
 asyncio
+openai
+pdfminer.six 
+pillow 
+pytesseract
+
+LLM_HEADERS = {"Authorization": "Bearer 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} 

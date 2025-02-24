@@ -69,6 +69,11 @@ Install the required Python packages:
 ```bash
 pip install -r requirements.txt
 ```
+### or 
+install it with pip 
+```bash
+pip install fastapi uvicorn yt-dlp openai python-dotenv PyPDF2 pdf2image pillow pytesseract requests
+```
 
 ---
 
@@ -81,7 +86,7 @@ pip install -r requirements.txt
    ```plaintext
    HUGGING_FACE_API_KEY=past_your_api_here
    ```
-   Replace `past_your_api_here` with your actual Hugging Face API key.
+   Replace `paste_your_api_here` with your actual Hugging Face API key.
 
 #### How to Get Your Hugging Face API Key
 1. Go to [Hugging Face](https://huggingface.co).
@@ -93,7 +98,7 @@ pip install -r requirements.txt
    - **Read access to contents of all public gated repos you can access**.
    - **Make calls to inference providers**.
 6. Scroll down, save the token, and copy it.
-7. Paste the token in the `.env` file, replacing `past_your_api_here`.
+7. Paste the token in the `.env` file, replacing `paste_your_api_here`.
 
 ---
 

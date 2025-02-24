@@ -8,5 +8,3 @@ openai
 pdfminer.six 
 pillow 
 pytesseract
-
-LLM_HEADERS = {"Authorization": "Bearer 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} 

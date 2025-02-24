@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khawar AI Assistant</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        .chat-container {
+            max-width: 800px;
+            margin: 20px auto;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            background-color: #1e1e1e;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            max-width: 80%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            position: relative;
+            white-space: pre-wrap;
+            /* Ensures long text formats correctly */
+            max-height: none;
+            /* Remove max height restriction */
+        }
+
+
+        .user-message {
+            background-color: #1976d2;
+            color: white;
+            margin-left: 20%;
+        }
+
+        .bot-message {
+            background-color: #333;
+            color: white;
+            margin-right: 20%;
+        }
+
+        .file-preview-container {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            padding: 5px;
+            background: #333;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .file-preview-container img {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            object-fit: cover;
+        }
+
+        .load-more {
+            position: absolute;
+            /* Position absolutely within the message */
+            bottom: 5px;
+            /* Position at the bottom */
+            right: 10px;
+            /* Position at the right */
+            background: #333;
+            color: #1976d2;
+            padding: 2px 8px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .loading-dots {
+            display: inline-block;
+            position: relative;
+            width: 80px;
+            height: 1em;
+        }
+
+        .loading-dots div {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fff;
+            animation-timing-function: cubic-bezier(0, 1, 1, 0);
+        }
+
+        .loading-dots div:nth-child(1) {
+            left: 8px;
+            animation: loading-dots1 0.6s infinite;
+        }
+
+        .loading-dots div:nth-child(2) {
+            left: 8px;
+            animation: loading-dots2 0.6s infinite;
+        }
+
+        .loading-dots div:nth-child(3) {
+            left: 32px;
+            animation: loading-dots2 0.6s infinite;
+        }
+
+        .loading-dots div:nth-child(4) {
+            left: 56px;
+            animation: loading-dots3 0.6s infinite;
+        }
+
+        @keyframes loading-dots1 {
+            0% {
+                transform: scale(0);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes loading-dots3 {
+            0% {
+                transform: scale(1);
+            }
+
+            100% {
+                transform: scale(0);
+            }
+        }
+
+        @keyframes loading-dots2 {
+            0% {
+                transform: translate(0, 0);
+            }
+
+            100% {
+                transform: translate(24px, 0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div id="filePreview" class="file-preview-container"></div>
+        <div class="input-container" style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+            <button class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">📎</button>
+            <input type="file" id="fileInput" class="form-control" accept=".pdf,.txt,.png,.jpg,.jpeg" hidden>
+            <input type="text" id="messageInput" class="form-control"
+                placeholder="Type your message or paste YouTube URL...">
+            <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let currentFile = null;
+
+        // Handle file input changes
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                currentFile = file;
+                showFilePreview(file);
+            }
+        });
+
+        // Show file preview above the input
+        function showFilePreview(file) {
+            const preview = document.getElementById('filePreview');
+            preview.innerHTML = `
+                <span>📄 ${file.name}</span>
+                <button onclick="clearFile()" class="btn btn-sm btn-danger">×</button>
+            `;
+        }
+
+        // Clear file and preview
+        function clearFile() {
+            currentFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('filePreview').innerHTML = '';
+        }
+
+        // Send message or file
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message && !currentFile) return;
+
+            // Add user message
+            if (currentFile) addFileBubble(currentFile.name, 'user');
+            if (message) addMessage(message, 'user');
+
+            // Add loading indicator
+            const loadingId = addLoadingMessage();
+
+            try {
+                let response;
+                if (isYouTubeUrl(message)) {
+                    response = await fetch(`${API_BASE}/get_video_details?url=${encodeURIComponent(message)}`);
+                    const data = await response.json();
+                    updateLoadingToMessage(loadingId, data.transcript, `Processing video: ${data.title}...`);
+                } else if (currentFile) {
+                    const formData = new FormData();
+                    formData.append('file', currentFile);
+                    response = await fetch(`${API_BASE}/extract-text`, { method: 'POST', body: formData });
+                    const data = await response.json();
+                    updateLoadingToMessage(loadingId, data.text, 'Extracting text from your file...');
+                } else {
+                    const formData = new FormData();
+                    formData.append('message', message);
+                    response = await fetch(`${API_BASE}/chat`, { method: 'POST', body: formData });
+                    const data = await response.json();
+                    updateLoadingToMessage(loadingId, data.response);
+                }
+            } catch (error) {
+                updateLoadingToMessage(loadingId, `Error: ${error.message}`);
+            }
+
+            input.value = '';
+            clearFile();
+        }
+
+        // Add a loading message with animated dots
+        function addLoadingMessage() {
+            const id = Date.now();
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot-message';
+            messageDiv.innerHTML = `
+                <div class="loading-dots">
+                    <div></div><div></div><div></div><div></div>
+                </div>
+            `;
+            messageDiv.dataset.loadingId = id;
+            document.getElementById('chatMessages').appendChild(messageDiv);
+            return id;
+        }
+
+        // Replace loading indicator with actual message
+        function updateLoadingToMessage(loadingId, fullText, initialText = 'Processing your request...') {
+            const messageDiv = document.querySelector(`[data-loading-id="${loadingId}"]`);
+            if (!messageDiv) return;
+
+            // Clear the loading animation
+            messageDiv.innerHTML = '';
+
+            // Start the typing effect with the actual response
+            addTypingEffect('', 'bot', fullText, messageDiv);
+        }
+
+        // Add typing effect to messages
+        function addTypingEffect(initialText, sender, fullText, existingElement = null) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = existingElement || document.createElement('div');
+            if (!existingElement) {
+                messageDiv.className = `message ${sender}-message`;
+                messagesDiv.appendChild(messageDiv);
+            }
+
+            let displayedText = initialText;
+            let i = initialText.length;
+            const speed = fullText.length > 500 ? 10 : 20;
+
+            const typingInterval = setInterval(() => {
+                if (i < fullText.length) {
+                    displayedText += fullText.charAt(i);
+                    messageDiv.textContent = displayedText;
+                    i++;
+                } else {
+                    clearInterval(typingInterval);
+                    addLoadMoreIfNeeded(messageDiv, fullText);
+                }
+            }, speed);
+
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Add "Show More" button for long messages
+        function addLoadMoreIfNeeded(messageDiv, fullText) {
+    if (fullText.length > 500) {
+        const truncatedText = fullText.substring(0, 500) + '...';
+        messageDiv.textContent = truncatedText;
+
+        const loadMore = document.createElement('div');
+        loadMore.className = 'load-more';
+        loadMore.textContent = '▼ Show More';
+        loadMore.style.cursor = 'pointer';
+        loadMore.style.color = '#1976d2';
+
+        loadMore.onclick = () => {
+            messageDiv.textContent = fullText;
+            messageDiv.style.maxHeight = 'none'; // Allow full expansion
+            loadMore.remove();
+        };
+
+        messageDiv.appendChild(loadMore);
+    }
+}
+
+        // Add a file bubble to the chat
+        function addFileBubble(fileName, sender) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const fileBubble = document.createElement('div');
+            fileBubble.className = `message ${sender}-message file-preview-container`;
+            fileBubble.innerHTML = `
+                <span>📄 ${fileName}</span>
+            `;
+            messagesDiv.appendChild(fileBubble);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Add a text message to the chat
+        function addMessage(text, sender) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Check if the message is a YouTube URL
+        function isYouTubeUrl(url) {
+            return /youtube\.com\/watch\?v=|youtu\.be\//.test(url);
+        }
+
+        // Send message on Enter key press
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+
+</html>

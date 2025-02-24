@@ -50,7 +50,6 @@ def truncate_text(text: str, max_chars: int = 16000) -> str:
     return text[:max_chars] if len(text) > max_chars else text
 
 # ChatProcessor class for handling AI responses
-# ChatProcessor class for handling AI responses
 class ChatProcessor:
     async def _call_mistral(self, prompt: str, max_length: int = 200, temperature: float = 0.5) -> str:
         try:
@@ -88,8 +87,16 @@ class ChatProcessor:
                 )
                 response = await self._call_mistral(prompt, max_length=300, temperature=0.3)
             else:
-                prompt = f"User: {question}\nAssistant:"
-                response = await self._call_mistral(prompt, max_length=150)
+                # Enhanced prompt for general questions
+                prompt = (
+                    "You are a helpful assistant. Answer questions factually based on your knowledge. "
+                    "For questions about specific products or recent developments:\n"
+                    "1. Provide known information up to your knowledge cutoff\n"
+                    "2. Clearly state if information might be outdated\n"
+                    "3. Suggest checking official sources for latest details\n\n"
+                    f"User Question: {question}\n\nAssistant Response:"
+                )
+                response = await self._call_mistral(prompt, max_length=400, temperature=0.3)
 
             clean_response = response.replace(prompt, "").strip()
             return {"response": clean_response.split("\n")[0]}
@@ -194,12 +201,20 @@ async def chat_endpoint(
 
     combined_context = context or file_content
 
+    # Check if the user is asking for a summary
+    if "summarize" in message.lower():
+        if combined_context:
+            summary_result = await chat_processor.generate_summary(combined_context, max_length=200)
+            return {"response": summary_result.get("summary", "No summary available.")}
+        else:
+            return {"response": "No content available to summarize."}
+
+    # Handle general questions
     programming_keywords = ["code", "programming", "python", "java", "javascript", "c++", "html", "css", "sql"]
     if any(keyword in message.lower() for keyword in programming_keywords):
         return await chat_processor.generate_code_response(message)
     else:
         return await chat_processor.generate_ai_response(message, combined_context)
-
 @app.post("/summarize")
 async def summarize_text(
     text: str = Form(..., description="The text content to summarize"),
@@ -343,6 +358,10 @@ async def get_video_details(url: str, lang: str = 'en'):
 
     transcript = clean_transcript(transcript)
 
+    # Generate a summary of the transcript
+    summary_result = await chat_processor.generate_summary(transcript, max_length=200)
+    summary = summary_result.get("summary", "No summary available.")
+
     return {
         'title': info.get('title'),
         'description': info.get('description'),
@@ -351,4 +370,5 @@ async def get_video_details(url: str, lang: str = 'en'):
         'upload_date': info.get('upload_date'),
         'channel': info.get('channel'),
         'transcript': transcript,
+        'summary': summary, 
     }

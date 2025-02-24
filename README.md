@@ -1,7 +1,7 @@
 # VidToText - AI-Powered Video and File to Text Converter
 
 Welcome to **VidToText**, a powerful backend tool that allows you to:
-- **Chat with AI** using Mistral-7B-Instruct-v0.2(Lama 2).
+- **Chat with AI** using Hugging Face's inference API.
 - **Convert YouTube videos to text** using Whisper for speech-to-text transcription.
 - **Extract text from files** (PDFs, images, etc.) using OCR and PDF processing.
 - **Summarize content** for quick insights.
@@ -16,7 +16,7 @@ This tool is built with **FastAPI** and integrates multiple technologies to prov
 2. **File to Text**:
    - Upload PDFs or images, and the tool will extract text using OCR (Optical Character Recognition).
 3. **AI Chat**:
-   - Interact with OpenAI's GPT models for chatting, summarization, and more.
+   - Interact with Hugging Face's inference API for chatting, summarization, and more.
 4. **Summarization**:
    - Summarize long texts or transcripts for quick insights.
 
@@ -77,11 +77,23 @@ pip install -r requirements.txt
    ```bash
    touch .env
    ```
-2. Add your OpenAI API key to the `.env` file:
+2. Add your Hugging Face API key to the `.env` file:
    ```plaintext
-   OPENAI_API_KEY=your_openai_api_key_here
+   HUGGING_FACE_API_KEY=past_your_api_here
    ```
-   Replace `your_openai_api_key_here` with your actual OpenAI API key.
+   Replace `past_your_api_here` with your actual Hugging Face API key.
+
+#### How to Get Your Hugging Face API Key
+1. Go to [Hugging Face](https://huggingface.co).
+2. Log in to your account.
+3. Navigate to your profile > Settings > Access Tokens.
+4. Click on **New Token**.
+5. Enable the following permissions:
+   - **Read access to contents of all repos under your personal namespace**.
+   - **Read access to contents of all public gated repos you can access**.
+   - **Make calls to inference providers**.
+6. Scroll down, save the token, and copy it.
+7. Paste the token in the `.env` file, replacing `past_your_api_here`.
 
 ---
 
